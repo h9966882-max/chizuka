@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>カード一覧 ― つながりの地図家</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;700;800&family=Zen+Old+Mincho:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1f3439;
+    --navy-deep:#152529;
+    --gold:#c9a876;
+    --gold-soft:#e3d2ab;
+    --paper:#f7efdd;
+    --paper-dim:#ece0c5;
+    --ink:#33291f;
+    --ink-soft:#6c5f4f;
+
+    --tsunagari:#d98a8a;
+    --chowa:#8caa78;
+    --manabi:#e0b955;
+    --keizoku:#9a8cc2;
+    --hasshin:#d68f5c;
+    --yuragi:#a8a39a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    font-family:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(255,255,255,0.05), transparent 55%),
+      radial-gradient(ellipse at 80% 100%, rgba(255,255,255,0.04), transparent 55%),
+      linear-gradient(155deg, var(--navy) 0%, var(--navy-deep) 65%, #101c1f 100%);
+    color:var(--ink);
+    min-height:100vh;
+    line-height:1.8;
+  }
+  #app{max-width:760px; margin:0 auto; padding:18px 14px 60px;}
+
+  .frame{
+    background:var(--paper);
+    border-radius:18px;
+    border:1px solid rgba(201,168,118,0.55);
+    box-shadow:
+      0 0 0 6px var(--navy-deep) inset,
+      0 0 0 8px rgba(201,168,118,0.35) inset,
+      0 18px 40px rgba(0,0,0,0.35);
+    padding:26px 20px 28px;
+    position:relative;
+    overflow:hidden;
+  }
+  .frame::before{
+    content:"";
+    position:absolute; inset:10px;
+    border:1px dashed rgba(201,168,118,0.35);
+    border-radius:10px;
+    pointer-events:none;
+  }
+
+  h1.title{
+    font-family:"Shippori Mincho B1", serif;
+    font-weight:800;
+    text-align:center;
+    color:var(--navy);
+    letter-spacing:0.12em;
+    font-size:1.6rem;
+    margin:6px 0 4px;
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:0.82rem;
+    letter-spacing:0.18em;
+    margin-bottom:14px;
+  }
+  .back-link{
+    display:block; text-align:center; margin-bottom:18px;
+    font-size:0.82rem; color:var(--ink-soft); text-decoration:none;
+    letter-spacing:0.05em;
+  }
+  .back-link:hover{color:var(--navy);}
+
+  .divider{
+    display:flex; align-items:center; gap:10px;
+    margin:22px 0 12px;
+    color:var(--gold);
+  }
+  .divider::before, .divider::after{
+    content:""; flex:1; height:1px;
+    background:linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .divider span{
+    font-family:"Shippori Mincho B1",serif;
+    font-size:1rem; color:var(--navy); white-space:nowrap;
+  }
+  .divider .count{
+    font-size:0.75rem; color:var(--ink-soft); margin-left:6px;
+  }
+
+  .legend{
+    display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+    margin:14px 0 4px;
+  }
+  .legend-item{
+    display:flex; align-items:center; gap:6px;
+    background:var(--paper-dim); border-radius:999px;
+    padding:6px 12px; font-size:0.78rem; color:var(--ink);
+  }
+  .legend-dot{
+    width:16px; height:16px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:0.7rem; flex-shrink:0;
+  }
+
+  .card-list-item{
+    display:flex; gap:12px; align-items:flex-start;
+    padding:11px 0; border-bottom:1px solid var(--paper-dim);
+  }
+  .card-list-item:last-child{border-bottom:none;}
+  .cli-icon{
+    width:32px; height:32px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:1rem; margin-top:1px;
+  }
+  .cli-body{flex:1;}
+  .cli-body .cli-title{
+    display:flex; align-items:center; gap:8px;
+    color:var(--navy); font-family:"Shippori Mincho B1",serif; font-size:0.95rem;
+    margin-bottom:2px;
+  }
+  .cli-body p{margin:0; font-size:0.85rem; color:var(--ink-soft);}
+  .cli-tag{
+    font-size:0.65rem; padding:1px 9px; border-radius:999px;
+    color:#fff; background:var(--gold); letter-spacing:0.05em;
+  }
+
+  .intro{font-size:0.88rem; color:var(--ink); margin:0 0 8px;}
+  .intro.soft{color:var(--ink-soft); font-size:0.82rem;}
+
+  @media (max-width:420px){
+    h1.title{font-size:1.3rem;}
+    .frame{padding:20px 14px;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   データ定義（index.html と同じもの）
+============================================================ */
+const VALUES = {
+  tsunagari: { name:'つながり', hex:'#d98a8a', icon:'♥' },
+  chowa:     { name:'調和',     hex:'#8caa78', icon:'☘' },
+  manabi:    { name:'学び',     hex:'#e0b955', icon:'✦' },
+  keizoku:   { name:'継続',     hex:'#9a8cc2', icon:'★' },
+  hasshin:   { name:'発信',     hex:'#d68f5c', icon:'✉' },
+};
+const VALUE_ORDER = ['tsunagari','chowa','manabi','keizoku','hasshin'];
+const YURAGI = { name:'揺らぎ', hex:'#a8a39a', icon:'〜' };
+
+const ENCOUNTERS = [
+  { title:'静かな職人', value:'chowa', text:'長い時間をかけて、ひとつのことを磨き続けている人に出会う。' },
+  { title:'遠回りする旅人', value:'manabi', text:'最短のルートを知っているのに、わざと遠回りする人に出会う。' },
+  { title:'言葉を集める人', value:'hasshin', text:'誰かの話を、静かにノートへ書き留めている人がいる。' },
+  { title:'久しぶりの誰か', value:'tsunagari', text:'長く会っていなかった人と、思いがけずすれちがう。' },
+  { title:'通い続ける人', value:'keizoku', text:'毎日同じ時間に、同じ場所へ通っている人を見かける。' },
+  { title:'問いを残す子ども', value:'manabi', text:'「なぜ?」と聞いたまま、答えを待たずに駆けていった子どもがいた。' },
+  { title:'灯りをともす店', value:'tsunagari', text:'夜遅くまで、ひとつだけ灯りをつけている小さな店がある。' },
+  { title:'川を見ている人', value:'chowa', text:'ただ水の流れを、長い時間眺めている人がいる。' },
+  { title:'手紙を抱えた人', value:'hasshin', text:'出すかどうか迷っている手紙を、まだ手に持っている人がいる。' },
+  { title:'同じ本を読む人', value:'manabi', text:'別々の場所で、同じ本を読んでいる人がいることを知る。' },
+  { title:'立ち止まる人', value:'chowa', text:'忙しい通りの真ん中で、ひとりだけ立ち止まって空を見ている人がいる。' },
+  { title:'道具を譲る人', value:'tsunagari', text:'使い込んだ道具を、まだ使える誰かに譲っている人がいる。' },
+  { title:'同じ席に座る人', value:'keizoku', text:'カフェへ行くたびに、いつも同じ席に座っている人がいる。' },
+  { title:'型を守る人', value:'keizoku', text:'決められた手順を、ひとつも飛ばさずにこなしている人を見かける。' },
+  { title:'長く通う常連', value:'keizoku', text:'何十年も、同じ店に通い続けている人がいると聞く。' },
+  { title:'歌う人', value:'hasshin', text:'誰に聞かせるためでもなく、小さく歌っている人がいる。' },
+  { title:'貼り紙を書く人', value:'hasshin', text:'掲示板に、誰かへ向けた短い貼り紙を書いている人がいる。' },
+  { title:'名前を呼ぶ人', value:'tsunagari', text:'通りすがりに、誰かの名前をうれしそうに呼ぶ声が聞こえた。' },
+  { title:'風を読む人', value:'chowa', text:'今日の風の向きだけで、明日の天気を当てる人がいる。' },
+  { title:'地図を描き直す人', value:'manabi', text:'古い地図に、新しい発見を書き足している人を見かける。' },
+];
+
+const CONTINUITIES = [
+  { title:'今日の一行', value:'keizoku', text:'今日も同じノートに、一行だけ書き加える。' },
+  { title:'水をやる時間', value:'chowa', text:'誰も見ていない時間に、植物へ水をやる。' },
+  { title:'いつもの道', value:'keizoku', text:'今日もいつもの道を、少しだけ違う速さで歩く。' },
+  { title:'返事のない手紙', value:'tsunagari', text:'返ってくるかわからない手紙を、また書く。' },
+  { title:'うまくならない練習', value:'manabi', text:'うまくならない練習を、今日もまた繰り返す。' },
+  { title:'机を整える', value:'keizoku', text:'始める前に、まず机の上を整える。' },
+  { title:'お茶の時間', value:'chowa', text:'一日の終わりに、同じ手順でお茶を淹れる。' },
+  { title:'小さなあいさつ', value:'hasshin', text:'今日もまた、誰かに小さく「おはよう」と言う。' },
+  { title:'続きのページ', value:'manabi', text:'読みかけだった本の続きを、少しだけ開く。' },
+  { title:'眠る前のひとつ', value:'tsunagari', text:'眠る前に、今日あったことをひとつだけ思い出す。' },
+  { title:'針の音', value:'keizoku', text:'終わりが見えない作業を、また少しだけ進める。' },
+  { title:'見送る習慣', value:'hasshin', text:'誰かを見送るとき、必ず同じ言葉をかける。' },
+  { title:'窓を開ける', value:'chowa', text:'朝、まず窓を開けて、外の空気を部屋に入れる。' },
+  { title:'同じ角度で座る', value:'chowa', text:'今日も、同じ角度で椅子に腰をおろす。' },
+  { title:'誰かの名前を書く', value:'tsunagari', text:'年賀状や手紙に、今年も同じ人の名前を書く。' },
+  { title:'同じ場所で待つ', value:'tsunagari', text:'誰かを待つとき、いつも同じ場所で待つ。' },
+  { title:'単語をひとつ覚える', value:'manabi', text:'今日も、知らなかった言葉をひとつだけ覚える。' },
+  { title:'同じ問題を見直す', value:'manabi', text:'うまく解けなかった問題を、もう一度開いて見直す。' },
+  { title:'日記をつける', value:'hasshin', text:'誰に見せるためでもないノートに、今日もひとこと書く。' },
+  { title:'同じ曲を流す', value:'hasshin', text:'作業をするとき、今日もいつもの曲を流す。' },
+];
+
+const FLUCTUATIONS = [
+  { title:'大雨', text:'通るつもりだった道が、大雨でふさがれてしまった。' },
+  { title:'すれちがい', text:'伝えたかったことが、思うように伝わらなかった。' },
+  { title:'疲労', text:'今日は、何をする気力もわいてこない。' },
+  { title:'沈黙', text:'返事が来るはずの場所から、なにも返ってこない。' },
+  { title:'対立', text:'同じものを見ていたはずなのに、見え方がまったく違っていた。' },
+  { title:'未完成', text:'やろうとしていたことが、中途半端なまま終わってしまった。' },
+  { title:'迷い', text:'進むべき方向が、急にわからなくなった。' },
+  { title:'変化', text:'当たり前だと思っていた風景が、いつのまにか変わっていた。' },
+  { title:'忘れもの', text:'持っていくつもりだったものを、家に忘れてきてしまった。' },
+  { title:'予定の変更', text:'楽しみにしていた予定が、急に変わってしまった。' },
+  { title:'言い過ぎた言葉', text:'つい、言い過ぎてしまった言葉が、頭から離れない。' },
+  { title:'静けさ', text:'いつも聞こえていた音が、今日はなぜか聞こえない。' },
+];
+
+const DISCOVERIES = [
+  { title:'雨上がりの匂い', value:'chowa', text:'雨が止んだあと、地面から立ちのぼる匂いに気づく。' },
+  { title:'誰かが置いた花', value:'tsunagari', text:'なぜここに、誰かが花を置いていったのだろう。' },
+  { title:'消えていた答え', value:'manabi', text:'探していた答えが、探すのをやめたとたんに見つかる。' },
+  { title:'続けてきた跡', value:'keizoku', text:'積み重ねてきたものが、思いがけない形になっていることに気づく。' },
+  { title:'届いていた言葉', value:'hasshin', text:'昔伝えた言葉が、誰かの中にまだ残っていたことを知る。' },
+  { title:'忘れていた約束', value:'tsunagari', text:'ずっと前に交わした約束を、ふと思い出す。' },
+  { title:'整っていた場所', value:'chowa', text:'誰も手を入れていないはずの場所が、なぜか整っていた。' },
+  { title:'重なっていた問い', value:'manabi', text:'別々に考えていたはずの問いが、実はひとつだったことに気づく。' },
+];
+
+/* ============================================================
+   レンダリング
+============================================================ */
+function cardItem(c, opts={}){
+  const v = c.value ? VALUES[c.value] : YURAGI;
+  const tag = opts.tag ? `<span class="cli-tag">${opts.tag}</span>` : '';
+  return `<div class="card-list-item">
+    <div class="cli-icon" style="background:${v.hex}">${v.icon}</div>
+    <div class="cli-body">
+      <div class="cli-title">${c.title}${tag}</div>
+      <p>${c.text}</p>
+    </div>
+  </div>`;
+}
+
+function legend(){
+  const items = VALUE_ORDER.map(k=>{
+    const v=VALUES[k];
+    return `<div class="legend-item"><span class="legend-dot" style="background:${v.hex}">${v.icon}</span>${v.name}</div>`;
+  });
+  items.push(`<div class="legend-item"><span class="legend-dot" style="background:${YURAGI.hex}">${YURAGI.icon}</span>${YURAGI.name}</div>`);
+  return `<div class="legend">${items.join('')}</div>`;
+}
+
+function render(){
+  let html = `<div class="frame">`;
+  html += `<h1 class="title">カードずかん</h1>`;
+  html += `<div class="subtitle">CARD COLLECTION</div>`;
+  html += `<a class="back-link" href="index.html">← 世界にもどる</a>`;
+
+  html += `<p class="intro">「つながりの地図家」に登場するすべてのカードの一覧。色とアイコンは、そのカードが置かれたときに地図のマスへ表れる「推奨される価値観」を示す。</p>`;
+  html += `<p class="intro soft">実際に置く価値観は、ここに示された推奨にかかわらず自由に選べる。</p>`;
+  html += legend();
+
+  html += `<div class="divider"><span>出会いカード</span><span class="count">${ENCOUNTERS.length}種</span></div>`;
+  html += ENCOUNTERS.map(c=>cardItem(c)).join('');
+
+  html += `<div class="divider"><span>継続カード</span><span class="count">${CONTINUITIES.length}種</span></div>`;
+  html += CONTINUITIES.map(c=>cardItem(c)).join('');
+
+  html += `<div class="divider"><span>揺らぎカード</span><span class="count">${FLUCTUATIONS.length}種</span></div>`;
+  html += `<p class="intro soft">推奨される価値観はない。「受け止めて残す」か「立ち止まる」かを選ぶ特別なカード。</p>`;
+  html += FLUCTUATIONS.map(c=>cardItem(c)).join('');
+
+  html += `<div class="divider"><span>発見カード</span><span class="count">${DISCOVERIES.length}種</span></div>`;
+  html += `<p class="intro soft">通常の山札には入っていない特別なカード。揺らぎを受け止め続けたとき、その先に現れる。</p>`;
+  html += DISCOVERIES.map(c=>cardItem(c, {tag:'発見'})).join('');
+
+  html += `<a class="back-link" href="index.html" style="margin-top:18px">← 世界にもどる</a>`;
+  html += `</div>`;
+  document.getElementById('app').innerHTML = html;
+}
+render();
+</script>
+</body>
+</html>
