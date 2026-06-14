@@ -124,6 +124,15 @@
     display:flex; align-items:center; justify-content:center;
     color:#fff; font-size:1rem; margin-top:1px;
   }
+  .cli-icon-emoji{
+    width:32px; height:32px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.2rem; margin-top:1px;
+  }
+  .cli-pair{
+    margin-top:4px !important; font-size:0.76rem !important;
+    color:#bba98a !important; letter-spacing:0.02em;
+  }
   .cli-body{flex:1;}
   .cli-body .cli-title{
     display:flex; align-items:center; gap:8px;
@@ -234,6 +243,29 @@ const DISCOVERIES = [
   { title:'重なっていた問い', value:'manabi', text:'別々に考えていたはずの問いが、実はひとつだったことに気づく。' },
 ];
 
+const COMBINATIONS = [
+  { a:'今日の一行', b:'続きのページ', name:'書き続ける人', icon:'📖', desc:'途切れていたはずの記録が、ひとつの物語としてつながっていく。' },
+  { a:'疲労', b:'お茶の時間', name:'休息', icon:'☕', desc:'立ち止まる時間こそが、また歩き出すための準備になる。' },
+  { a:'すれちがい', b:'届いていた言葉', name:'遅れて届く理解', icon:'💌', desc:'伝わらなかったはずの想いが、時間を超えて誰かの中に残っていた。' },
+  { a:'灯りをともす店', b:'久しぶりの誰か', name:'再会の灯り', icon:'🏮', desc:'ずっとそこにあった灯りが、思いがけない再会を導いていた。' },
+  { a:'うまくならない練習', b:'同じ問題を見直す', name:'練習帖', icon:'📝', desc:'うまくいかないことを、何度も見直す姿勢そのものが力になる。' },
+  { a:'沈黙', b:'静けさ', name:'深い静寂', icon:'🌙', desc:'ふたつの静けさが重なって、その場所はより深い静寂になる。' },
+  { a:'未完成', b:'重なっていた問い', name:'問いの続き', icon:'❔', desc:'終わらなかったことの中に、まだ考えるべき問いが残っていた。' },
+  { a:'対立', b:'整っていた場所', name:'落ち着いた先', icon:'🍃', desc:'ぶつかり合ったあとに、思いがけず整った場所が見つかる。' },
+  { a:'迷い', b:'地図を描き直す人', name:'新しい道筋', icon:'🧭', desc:'迷ったことで、これまでとは違う道が描けるようになる。' },
+  { a:'お茶の時間', b:'日記をつける', name:'ひとりの時間', icon:'🕯', desc:'誰にも見せない時間が、その日をそっと締めくくる。' },
+  { a:'言葉を集める人', b:'貼り紙を書く人', name:'言葉が残る場所', icon:'🗒', desc:'誰かの言葉が、別の誰かの言葉と並んで残っていく。' },
+  { a:'同じ本を読む人', b:'単語をひとつ覚える', name:'学びの輪', icon:'📚', desc:'別々に学んでいたはずのことが、いつのまにかつながっている。' },
+  { a:'眠る前のひとつ', b:'忘れもの', name:'思い出すきっかけ', icon:'🌃', desc:'眠る前に思い出したことが、忘れていた何かを連れてくる。' },
+  { a:'道具を譲る人', b:'長く通う常連', name:'受け継がれるもの', icon:'🔧', desc:'長く使われてきたものが、次の誰かの手に渡っていく。' },
+  { a:'水をやる時間', b:'窓を開ける', name:'整える朝', icon:'🌱', desc:'小さな手入れが重なって、その場所の空気が変わっていく。' },
+  { a:'名前を呼ぶ人', b:'同じ場所で待つ', name:'待ち合わせ', icon:'🌳', desc:'名前を呼ぶ声と、待っている人が、同じ場所で出会う。' },
+  { a:'予定の変更', b:'立ち止まる人', name:'思いがけない時間', icon:'⏳', desc:'予定が崩れたことで、ただ立ち止まる時間が生まれる。' },
+  { a:'言い過ぎた言葉', b:'見送る習慣', name:'次に会うときまで', icon:'🚪', desc:'言い過ぎてしまった日も、見送る言葉だけは変わらない。' },
+  { a:'誰かが置いた花', b:'同じ角度で座る', name:'変わらない景色', icon:'🌸', desc:'いつもの場所に、見慣れないものがひとつ増えている。' },
+  { a:'忘れていた約束', b:'手紙を抱えた人', name:'果たされる約束', icon:'✉️', desc:'出すかどうか迷っていた手紙が、思い出した約束への返事になる。' },
+];
+
 /* ============================================================
    レンダリング
 ============================================================ */
@@ -245,6 +277,17 @@ function cardItem(c, opts={}){
     <div class="cli-body">
       <div class="cli-title">${c.title}${tag}</div>
       <p>${c.text}</p>
+    </div>
+  </div>`;
+}
+
+function comboItem(c){
+  return `<div class="card-list-item">
+    <div class="cli-icon-emoji">${c.icon}</div>
+    <div class="cli-body">
+      <div class="cli-title">${c.name}</div>
+      <p>${c.desc}</p>
+      <p class="cli-pair">「${c.a}」 ＋ 「${c.b}」</p>
     </div>
   </div>`;
 }
@@ -281,6 +324,10 @@ function render(){
   html += `<div class="divider"><span>発見カード</span><span class="count">${DISCOVERIES.length}種</span></div>`;
   html += `<p class="intro soft">通常の山札には入っていない特別なカード。揺らぎを受け止め続けたとき、その先に現れる。</p>`;
   html += DISCOVERIES.map(c=>cardItem(c, {tag:'発見'})).join('');
+
+  html += `<div class="divider"><span>生まれる組み合わせ</span><span class="count">${COMBINATIONS.length}種</span></div>`;
+  html += `<p class="intro soft">特定の2枚のカードが地図の上で隣り合うと、その場所に新しい「結びつき」が生まれる。地図にはその印として、金色の点線と「結」の文字が表示される。</p>`;
+  html += COMBINATIONS.map(c=>comboItem(c)).join('');
 
   html += `<a class="back-link" href="index.html" style="margin-top:18px">← 世界にもどる</a>`;
   html += `</div>`;
