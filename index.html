@@ -195,6 +195,12 @@
   .player-toggle .opt.selected{
     border-color:var(--gold); color:var(--navy); background:var(--paper-dim);
   }
+  .size-toggle .opt{padding:10px 6px; font-size:0.86rem; line-height:1.5;}
+  .size-toggle .opt-sub{
+    font-family:"Zen Old Mincho",serif; font-size:0.68rem; color:#bba98a;
+    letter-spacing:0; display:inline-block; margin-top:2px;
+  }
+  .size-toggle .opt.selected .opt-sub{color:var(--ink-soft);}
   .name-input{
     width:100%; padding:10px 12px; border-radius:10px;
     border:1px solid var(--paper-dim); background:#fffdf7;
@@ -474,6 +480,12 @@
     background:transparent; padding:6px 4px;
   }
   .world-name-box input:focus{outline:none; border-bottom-color:var(--gold);}
+  .world-name-display{
+    width:100%; text-align:center;
+    font-family:"Shippori Mincho B1",serif; font-weight:800;
+    font-size:1.35rem; color:var(--navy);
+    padding:6px 4px;
+  }
   .stat-row{
     display:flex; gap:10px; margin:14px 0; flex-wrap:wrap;
   }
@@ -517,6 +529,29 @@
     margin:14px 0; font-size:0.85rem; color:var(--ink);
   }
   .resume-box b{color:var(--navy);}
+
+  /* 世界の図書館 */
+  .lib-list{display:flex; flex-direction:column; gap:8px; margin:14px 0;}
+  .lib-item{
+    display:flex; align-items:center; gap:10px;
+    background:#fffdf7; border:1px solid var(--paper-dim); border-radius:12px;
+    padding:11px 14px; cursor:pointer; transition:border-color .15s;
+  }
+  .lib-item:active{border-color:var(--gold-soft);}
+  .lib-item.delete-mode{cursor:default;}
+  .lib-check{width:18px; height:18px; flex-shrink:0; accent-color:var(--navy);}
+  .lib-body{flex:1; min-width:0;}
+  .lib-title{
+    font-family:"Shippori Mincho B1",serif; color:var(--navy); font-size:0.95rem;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .lib-meta{font-size:0.74rem; color:var(--ink-soft); margin-top:2px;}
+  .lib-dots{display:flex; gap:3px; flex-shrink:0;}
+  .lib-dot{
+    width:20px; height:20px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:0.65rem; flex-shrink:0;
+  }
 
   @media (max-width:420px){
     h1.title{font-size:1.4rem;}
@@ -687,8 +722,18 @@ const WORLD_NAMES_SOLO = {
 };
 
 const HEX_SIZE = 34;
-const RADIUS = 3;
-const MAX_TILES = 36; /* 中心を除く */
+
+const MAP_SIZES = {
+  small:  { radius:2, label:'小さい地図',  desc:'19マス・短時間で旅できる' },
+  medium: { radius:3, label:'標準の地図',  desc:'37マス・じっくり向き' },
+  large:  { radius:4, label:'大きい地図',  desc:'61マス・とことん向き' },
+};
+function totalHexes(radius){ return 1 + 3*radius*(radius+1); }
+function maxTilesFor(radius){ return totalHexes(radius) - 1; }
+function sizeKeyFromRadius(radius){
+  const found = Object.entries(MAP_SIZES).find(([k,v])=>v.radius===radius);
+  return found ? found[0] : 'medium';
+}
 
 /* ============================================================
    状態管理
@@ -697,11 +742,13 @@ let state = null;
 let saveAvailable = true;
 
 const SAVE_KEY = 'tsunagari-no-chizuka:world';
+const LIBRARY_KEY = 'tsunagari-no-chizuka:library';
 
 function freshState(){
   return {
     screen:'start',
     numPlayers:1,
+    radius:3,
     players:[],
     currentPlayerIdx:0,
     turn:0,
@@ -718,6 +765,9 @@ function freshState(){
     ending:null,
     combinations:[],
     _lastCombo:null,
+    _archiveId:null,
+    _libraryDeleteMode:false,
+    _librarySelected:new Set(),
   };
 }
 
@@ -751,13 +801,50 @@ async function clearSave(){
   try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
 }
 
+/* ---- 世界の図書館 ---- */
+function loadLibrary(){
+  try{
+    const raw = localStorage.getItem(LIBRARY_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){ /* none */ }
+  return [];
+}
+function saveLibrary(lib){
+  try{ localStorage.setItem(LIBRARY_KEY, JSON.stringify(lib)); }catch(e){}
+}
+function archiveCurrentWorld(){
+  const lib = loadLibrary();
+  const snapshot = {
+    id: 'w' + Date.now() + '-' + Math.floor(Math.random()*1000),
+    date: new Date().toISOString(),
+    radius: state.radius,
+    turn: state.turn,
+    tiles: state.tiles,
+    numPlayers: state.numPlayers,
+    players: state.players.map(p=>({
+      name:p.name, future:p.future, conviction:p.conviction, empathy:p.empathy||0, diary:p.diary,
+    })),
+    combinations: state.combinations,
+    fluctuationCount: state.fluctuationCount,
+    ending: state.ending,
+  };
+  lib.unshift(snapshot);
+  saveLibrary(lib);
+  return snapshot.id;
+}
+function deleteFromLibrary(ids){
+  let lib = loadLibrary();
+  lib = lib.filter(w=>!ids.includes(w.id));
+  saveLibrary(lib);
+}
+
 /* ============================================================
    六角形マップ
 ============================================================ */
-function hexCells(){
+function hexCells(radius){
   const cells=[];
-  for(let q=-RADIUS;q<=RADIUS;q++){
-    const r1=Math.max(-RADIUS,-q-RADIUS), r2=Math.min(RADIUS,-q+RADIUS);
+  for(let q=-radius;q<=radius;q++){
+    const r1=Math.max(-radius,-q-radius), r2=Math.min(radius,-q+radius);
     for(let r=r1;r<=r2;r++) cells.push({q,r});
   }
   return cells;
@@ -785,13 +872,14 @@ function neighborTiles(q,r){
     .filter(Boolean);
 }
 function placeableHexes(){
+  const radius = state.radius;
   const occupied = new Set(Object.keys(state.tiles));
   const candidates = new Set();
   occupied.forEach(key=>{
     const [q,r]=key.split(',').map(Number);
     getNeighbors(q,r).forEach(([nq,nr])=>{
       const k=`${nq},${nr}`;
-      if(!occupied.has(k) && Math.abs(nq)<=RADIUS && Math.abs(nr)<=RADIUS && Math.abs(-nq-nr)<=RADIUS){
+      if(!occupied.has(k) && Math.abs(nq)<=radius && Math.abs(nr)<=radius && Math.abs(-nq-nr)<=radius){
         candidates.add(k);
       }
     });
@@ -802,8 +890,14 @@ function placeableHexes(){
 /* ============================================================
    レンダリング: マップ
 ============================================================ */
-function renderMap(){
-  const cells = hexCells();
+/* tiles, radius を指定すると、その地図を読み取り専用で描く（図書館での表示用）。
+   省略時は現在の state を使い、操作可能なマスをハイライトする。 */
+function renderMap(tiles, radius){
+  const interactive = tiles===undefined;
+  tiles = tiles || state.tiles;
+  radius = radius || state.radius;
+
+  const cells = hexCells(radius);
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   cells.forEach(({q,r})=>{
     const {x,y}=hexToPixel(q,r);
@@ -811,16 +905,16 @@ function renderMap(){
     minY=Math.min(minY,y-HEX_SIZE); maxY=Math.max(maxY,y+HEX_SIZE);
   });
   const w = maxX-minX, h = maxY-minY;
-  const placeable = state.placementMode ? placeableHexes() : new Set();
-  const newestKey = state._newestTileKey || null;
-  const pendingKey = state.pendingPlacement ? `${state.pendingPlacement.q},${state.pendingPlacement.r}` : null;
+  const placeable = (interactive && state.placementMode) ? placeableHexes() : new Set();
+  const newestKey = interactive ? (state._newestTileKey || null) : null;
+  const pendingKey = (interactive && state.pendingPlacement) ? `${state.pendingPlacement.q},${state.pendingPlacement.r}` : null;
   const comboMarks = [];
 
   let svg = `<svg viewBox="${minX} ${minY} ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
   cells.forEach(({q,r})=>{
     const key=`${q},${r}`;
     const {x,y}=hexToPixel(q,r);
-    const tile = state.tiles[key];
+    const tile = tiles[key];
     let fill, dark, icon, iconDark=false, extraClass='';
     if(tile){
       if(tile.type==='start'){ fill=START_TILE.hex; dark=START_TILE.dark; icon=START_TILE.icon; iconDark=true; }
@@ -1039,7 +1133,7 @@ function finishTurn(placedValue, diaryText){
 
   saveGame();
 
-  if(Object.keys(state.tiles).length-1 >= MAX_TILES){
+  if(Object.keys(state.tiles).length-1 >= maxTilesFor(state.radius)){
     endGame();
     return;
   }
@@ -1076,6 +1170,7 @@ function endGame(force){
     shareMode:false,
     activePlayerTab:0,
   };
+  state._archiveId = archiveCurrentWorld();
   saveGame();
   render();
 }
@@ -1086,10 +1181,15 @@ function endGame(force){
 function startSetupFlow(){
   state.screen='setup';
   state.numPlayers=1;
+  state.radius=3;
   render();
 }
 function setNumPlayers(n){
   state.numPlayers=n;
+  render();
+}
+function setMapSize(key){
+  state.radius = MAP_SIZES[key].radius;
   render();
 }
 function beginGame(){
@@ -1109,6 +1209,11 @@ function beginGame(){
     empathy:0,
     diary:[],
   }));
+  state.tiles = { '0,0': { type:'start' } };
+  state.combinations = [];
+  state.fluctuationCount = 0;
+  state.bonusPending = false;
+  state.turn = 0;
   state.currentPlayerIdx=0;
   state.screen='game';
   drawCard();
@@ -1124,6 +1229,8 @@ function render(){
   if(state.screen==='start') app.innerHTML = renderStart();
   else if(state.screen==='setup') app.innerHTML = renderSetup();
   else if(state.screen==='game') app.innerHTML = renderGame();
+  else if(state.screen==='library') app.innerHTML = renderLibrary();
+  else if(state.screen==='libraryView') app.innerHTML = renderLibraryView();
 
   if(state.showJournal){
     renderJournalModal();
@@ -1186,9 +1293,56 @@ function renderStart(){
     <p class="lead soft">まず「どんな未来を望むか」をひとつ選ぶ。そこから、カードが示す出来事に、ひとつずつ価値観を当てはめて地図を育てていく。理由を書き残せば、それがそのまま旅の記録になる。</p>
 
     ${resumeBlock}
-      <a class="back-link" href="cards.html" style="display:block;text-align:center;margin-top:14px;font-size:0.82rem;color:var(--ink-soft);text-decoration:underline;">カードずかんを見る</a>
+
+    <a class="back-link" href="cards.html" style="display:block;text-align:center;margin-top:14px;font-size:0.82rem;color:var(--ink-soft);text-decoration:underline;">カードずかんを見る</a>
+    <button class="small-link" style="display:block;width:100%;text-align:center;margin-top:10px" onclick="openLibrary()">世界の図書館を見る${libraryCount()>0?`（${libraryCount()}）`:''}</button>
   </div>
   `;
+}
+function libraryCount(){
+  return loadLibrary().length;
+}
+function openLibrary(){
+  state.screen='library';
+  state._libraryDeleteMode=false;
+  state._librarySelected=new Set();
+  render();
+}
+function backToStartFromLibrary(){
+  state.screen='start';
+  render();
+}
+function viewLibraryEntry(id){
+  state.screen='libraryView';
+  state._viewingId=id;
+  state._libraryViewState = { shareMode:false, activePlayerTab:0 };
+  render();
+}
+function backToLibrary(){
+  state.screen='library';
+  state._libraryDeleteMode=false;
+  state._librarySelected=new Set();
+  render();
+}
+function toggleDeleteMode(){
+  state._libraryDeleteMode = !state._libraryDeleteMode;
+  state._librarySelected = new Set();
+  render();
+}
+function toggleLibrarySelect(id){
+  if(state._librarySelected.has(id)) state._librarySelected.delete(id);
+  else state._librarySelected.add(id);
+  render();
+}
+function deleteSelectedWorlds(){
+  const ids = Array.from(state._librarySelected);
+  if(ids.length===0) return;
+  if(!confirm(`選んだ${ids.length}件の世界を削除する。元には戻せないけど、よろしい?`)) return;
+  deleteFromLibrary(ids);
+  if(state._archiveId && ids.includes(state._archiveId)) state._archiveId=null;
+  state._libraryDeleteMode=false;
+  state._librarySelected=new Set();
+  render();
 }
 
 function renderSetup(){
@@ -1196,6 +1350,16 @@ function renderSetup(){
     <div class="player-toggle">
       <div class="opt ${state.numPlayers===1?'selected':''}" onclick="setNumPlayers(1)">ひとりで遊ぶ</div>
       <div class="opt ${state.numPlayers===2?'selected':''}" onclick="setNumPlayers(2)">ふたりで遊ぶ</div>
+    </div>
+  `;
+
+  const sizeToggle = `
+    <div class="player-toggle size-toggle">
+      ${Object.entries(MAP_SIZES).map(([key,sz])=>`
+        <div class="opt ${state.radius===sz.radius?'selected':''}" onclick="setMapSize('${key}')">
+          ${sz.label}<br><span class="opt-sub">${sz.desc}</span>
+        </div>
+      `).join('')}
     </div>
   `;
 
@@ -1230,6 +1394,8 @@ function renderSetup(){
     <div class="subtitle">PREPARATION</div>
     <p class="lead soft">どんな未来を望むかによって、同じ出来事でも「納得できる選択」が変わってくる。まずは、この旅の指針をひとつ選んでほしい。</p>
     ${toggle}
+    <div class="divider" style="margin:18px 0 10px"><span>地図の大きさ</span></div>
+    ${sizeToggle}
     ${playerBlocks}
     <div class="btn-row">
       <button class="btn full" onclick="beginGame()">この指針で地図をひらく</button>
@@ -1259,7 +1425,7 @@ function renderGame(){
 
   // ステータスバー
   html += `<div class="status-bar">`;
-  html += `<div class="turn-counter">第 <b>${state.turn+1}</b> ターン<br>残りの土地 ${MAX_TILES-tilesPlaced}</div>`;
+  html += `<div class="turn-counter">第 <b>${state.turn+1}</b> ターン<br>残りの土地 ${maxTilesFor(state.radius)-tilesPlaced}</div>`;
   state.players.forEach((p,i)=>{
     const pct = state.turn>0 ? Math.min(100, (p.conviction/Math.max(1,state.turn*2))*100) : 0;
     const epct = state.turn>0 ? Math.min(100, ((p.empathy||0)/Math.max(1,state.turn))*100) : 0;
@@ -1484,11 +1650,14 @@ function setJournalTab(i){
 /* ============================================================
    エンディング
 ============================================================ */
-function renderEnding(){
-  const e = state.ending;
+/* world: {tiles, radius, turn, players, combinations, ending}
+   viewState: {shareMode, activePlayerTab}
+   opts: {renameEditable, onRename, onToggleShare, onSetTab} */
+function renderWorldBody(world, viewState, opts){
+  const e = world.ending;
   const counts = e.counts;
   const tilesPlaced = e.totalTiles;
-  const completed = tilesPlaced>=MAX_TILES;
+  const completed = tilesPlaced >= maxTilesFor(world.radius);
 
   let summaryLines = [];
   VALUE_ORDER.forEach(k=>{
@@ -1498,22 +1667,22 @@ function renderEnding(){
     ? `この世界では、${summaryLines.join('、')}選んだ。`
     : `この世界には、まだ何の色もついていない。`;
 
-  let narrative = `<p>${state.turn}回の選択を経て、世界はこの形になった。${summaryText}</p>`;
+  let narrative = `<p>${world.turn}回の選択を経て、世界はこの形になった。${summaryText}</p>`;
   if(e.yuragiCount>0){
     narrative += `<p>その途中には、${e.yuragiCount}回の「揺らぎ」が刻まれている。それもまた、この世界の一部として残っている。</p>`;
   }
-  const hubCount = Object.values(state.tiles).filter(t=>t.hub).length;
+  const hubCount = Object.values(world.tiles).filter(t=>t.hub).length;
   if(hubCount>0){
     narrative += `<p>そのうち${hubCount}か所は、異なる価値観が静かに交わる「交わりの場」になった。</p>`;
   }
   narrative += `<p>${completed ? '世界は、ひとつの形として完成した。' : 'この世界は、まだ描きかけのまま——でも、それもひとつの終わり方として、ここに残しておく。'}</p>`;
 
   // マップ（読み取り専用）
-  const mapHtml = `<div class="map-wrap">${renderMap()}</div>`;
+  const mapHtml = `<div class="map-wrap">${renderMap(world.tiles, world.radius)}</div>`;
 
   // 各プレイヤーの納得度・共感
   let convictionHtml = `<div class="stat-row">`;
-  state.players.forEach(p=>{
+  world.players.forEach(p=>{
     convictionHtml += `<div class="stat-box"><div class="num">${p.conviction}</div><div class="lbl">${p.name}の納得度</div></div>`;
     convictionHtml += `<div class="stat-box"><div class="num">${p.empathy||0}</div><div class="lbl">${p.name}の共感</div></div>`;
   });
@@ -1522,9 +1691,10 @@ function renderEnding(){
 
   // 生まれた組み合わせ
   let combosHtml = '';
-  if(state.combinations.length>0){
+  const combinations = world.combinations || [];
+  if(combinations.length>0){
     combosHtml = `<div class="divider"><span>生まれた組み合わせ</span></div>`;
-    combosHtml += state.combinations.map(c=>`
+    combosHtml += combinations.map(c=>`
       <div class="combo-item">
         <div class="ci-icon">${c.icon}</div>
         <div><b>《${c.name}》</b><p>${c.desc}</p></div>
@@ -1534,31 +1704,33 @@ function renderEnding(){
 
   // 共有モード
   let shareSection='';
-  if(!e.shareMode){
+  if(!viewState.shareMode){
     let tabs='';
     let journalContent='';
-    if(state.numPlayers>1){
-      const idx = e.activePlayerTab||0;
-      tabs = `<div class="player-tabs">` + state.players.map((p,i)=>`
-        <div class="player-tab ${idx===i?'active':''}" onclick="setEndingTab(${i})">${p.name}の記録</div>
+    if(world.players.length>1){
+      const idx = viewState.activePlayerTab||0;
+      tabs = `<div class="player-tabs">` + world.players.map((p,i)=>`
+        <div class="player-tab ${idx===i?'active':''}" onclick="${opts.onSetTab}(${i})">${p.name}の記録</div>
       `).join('') + `</div>`;
-      journalContent = renderJournalEntries(state.players[idx]);
+      journalContent = renderJournalEntries(world.players[idx]);
     } else {
-      journalContent = renderJournalEntries(state.players[0]);
+      journalContent = renderJournalEntries(world.players[0]);
     }
     shareSection = `<div class="divider"><span>旅の記録</span></div>${tabs}${journalContent}`;
   } else {
     shareSection = `<div class="divider"><span>世界の姿</span></div><p class="lead soft">この世界が、どんな価値観で育っていったかだけを、誰かと見ることができる。</p>`;
   }
 
-  return `
-  <div class="frame">
-    <h1 class="title">世界の記録</h1>
-    <div class="subtitle">${completed?'COMPLETED':'UNFINISHED, BUT WHOLE'}</div>
+  const nameBox = opts.renameEditable
+    ? `<input type="text" value="${escapeHtml(e.name)}" oninput="${opts.onRename}(this.value)">`
+    : `<div class="world-name-display">${escapeHtml(e.name)}</div>`;
 
+  return {
+    completed,
+    html: `
     <div class="world-name-box">
       <div class="label">この世界の名前</div>
-      <input type="text" value="${escapeHtml(e.name)}" oninput="renameWorld(this.value)">
+      ${nameBox}
     </div>
 
     ${mapHtml}
@@ -1569,19 +1741,156 @@ function renderEnding(){
 
     <div class="share-toggle">
       <span>日記を隠して、地図だけを見せる</span>
-      <div class="switch ${e.shareMode?'on':''}" onclick="toggleShare()"><div class="knob"></div></div>
+      <div class="switch ${viewState.shareMode?'on':''}" onclick="${opts.onToggleShare}()"><div class="knob"></div></div>
     </div>
 
     ${shareSection}
+  `};
+}
+
+function renderEnding(){
+  const world = { tiles:state.tiles, radius:state.radius, turn:state.turn, players:state.players, combinations:state.combinations, ending:state.ending };
+  const body = renderWorldBody(world, state.ending, {
+    renameEditable:true, onRename:'renameWorld', onToggleShare:'toggleShare', onSetTab:'setEndingTab',
+  });
+
+  return `
+  <div class="frame">
+    <h1 class="title">世界の記録</h1>
+    <div class="subtitle">${body.completed?'COMPLETED':'UNFINISHED, BUT WHOLE'}</div>
+
+    ${body.html}
 
     <div class="btn-row">
       <button class="btn full" onclick="restartGame()">新しい世界をはじめる</button>
     </div>
+    <button class="small-link" style="display:block;width:100%;text-align:center;margin-top:10px" onclick="openLibrary()">世界の図書館を見る${libraryCount()>0?`（${libraryCount()}）`:''}</button>
   </div>
   `;
 }
+
+/* ============================================================
+   世界の図書館
+============================================================ */
+function formatDate(iso){
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return '';
+  const pad = n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}`;
+}
+
+function renderLibrary(){
+  const lib = loadLibrary();
+  let listHtml;
+  if(lib.length===0){
+    listHtml = `<p class="lead soft">まだ、描き終えた世界はない。ひとつの世界を最後まで――あるいは「ここで終える」を選ぶところまで描くと、ここに残っていく。</p>`;
+  } else {
+    listHtml = `<div class="lib-list">` + lib.map(entry=>{
+      const counts = entry.ending.counts || {};
+      const sorted = VALUE_ORDER.slice().sort((a,b)=>(counts[b]||0)-(counts[a]||0));
+      const dots = sorted.filter(k=>counts[k]>0).slice(0,3).map(k=>
+        `<span class="lib-dot" style="background:${VALUES[k].hex}">${VALUES[k].icon}</span>`
+      ).join('');
+      const sizeKey = sizeKeyFromRadius(entry.radius);
+      const sizeLabel = MAP_SIZES[sizeKey] ? MAP_SIZES[sizeKey].label : '';
+      const checked = state._librarySelected && state._librarySelected.has(entry.id) ? 'checked' : '';
+      const checkbox = state._libraryDeleteMode
+        ? `<input type="checkbox" class="lib-check" ${checked} onchange="toggleLibrarySelect('${entry.id}')">`
+        : '';
+      const onClick = state._libraryDeleteMode ? '' : `onclick="viewLibraryEntry('${entry.id}')"`;
+      return `<div class="lib-item ${state._libraryDeleteMode?'delete-mode':''}" ${onClick}>
+        ${checkbox}
+        <div class="lib-body">
+          <div class="lib-title">${escapeHtml(entry.ending.name||'まだ名前のない場所')}</div>
+          <div class="lib-meta">${formatDate(entry.date)} ・ ${sizeLabel} ・ ${entry.turn}ターン</div>
+        </div>
+        <div class="lib-dots">${dots}</div>
+      </div>`;
+    }).join('') + `</div>`;
+  }
+
+  let deleteControls = '';
+  if(state._libraryDeleteMode){
+    const n = state._librarySelected ? state._librarySelected.size : 0;
+    deleteControls = `<div class="btn-row">
+      <button class="btn" onclick="deleteSelectedWorlds()" ${n===0?'disabled':''}>選んだ世界を削除（${n}）</button>
+      <button class="btn secondary" onclick="toggleDeleteMode()">キャンセル</button>
+    </div>`;
+  } else if(lib.length>0){
+    deleteControls = `<button class="small-link" onclick="toggleDeleteMode()">世界を削除する</button>`;
+  }
+
+  return `
+  <div class="frame">
+    <h1 class="title">世界の図書館</h1>
+    <div class="subtitle">ARCHIVE OF WORLDS</div>
+    <p class="lead soft">これまでに描き終えた世界が、ここに残されている。タップすると、その世界の記録を読み返せる。</p>
+    ${listHtml}
+    ${deleteControls}
+    <div class="btn-row">
+      <button class="btn secondary full" onclick="backToStartFromLibrary()">はじめにもどる</button>
+    </div>
+  </div>
+  `;
+}
+
+function renderLibraryView(){
+  const lib = loadLibrary();
+  const entry = lib.find(w=>w.id===state._viewingId);
+  if(!entry){
+    return `<div class="frame">
+      <h1 class="title">世界の記録</h1>
+      <p class="lead soft">この世界は、もう図書館に残っていないみたい。</p>
+      <div class="btn-row"><button class="btn full" onclick="backToLibrary()">図書館にもどる</button></div>
+    </div>`;
+  }
+  if(!state._libraryViewState) state._libraryViewState = { shareMode:false, activePlayerTab:0 };
+  const world = { tiles:entry.tiles, radius:entry.radius, turn:entry.turn, players:entry.players, combinations:entry.combinations||[], ending:entry.ending };
+  const body = renderWorldBody(world, state._libraryViewState, {
+    renameEditable:true, onRename:'libRenameWorld', onToggleShare:'libToggleShare', onSetTab:'libSetEndingTab',
+  });
+
+  return `
+  <div class="frame">
+    <h1 class="title">世界の記録</h1>
+    <div class="subtitle">${body.completed?'COMPLETED':'UNFINISHED, BUT WHOLE'} ・ ${formatDate(entry.date)}</div>
+
+    ${body.html}
+
+    <div class="btn-row">
+      <button class="btn full" onclick="backToLibrary()">図書館にもどる</button>
+    </div>
+  </div>
+  `;
+}
+function libRenameWorld(val){
+  const lib = loadLibrary();
+  const entry = lib.find(w=>w.id===state._viewingId);
+  if(entry){
+    entry.ending.name = val;
+    saveLibrary(lib);
+  }
+  if(state._archiveId===state._viewingId && state.ending){
+    state.ending.name = val;
+    saveGame();
+  }
+}
+function libToggleShare(){
+  state._libraryViewState.shareMode = !state._libraryViewState.shareMode;
+  render();
+}
+function libSetEndingTab(i){
+  state._libraryViewState.activePlayerTab = i;
+  render();
+}
+
 function renameWorld(val){
   state.ending.name = val;
+  if(state._archiveId){
+    const lib = loadLibrary();
+    const entry = lib.find(w=>w.id===state._archiveId);
+    if(entry){ entry.ending.name = val; saveLibrary(lib); }
+  }
   saveGame();
 }
 function toggleShare(){
@@ -1617,8 +1926,13 @@ async function init(){
 }
 function resumeSavedGame(){
   state = window._savedState;
+  // 旧バージョンのセーブデータとの互換性を確保
+  if(!state.radius) state.radius = 3;
+  if(!state.combinations) state.combinations = [];
+  if(state._lastCombo===undefined) state._lastCombo = null;
   // _newestTileKeyは演出用なのでリセット
   state._newestTileKey = null;
+  state._librarySelected = new Set();
   if(!state.currentCard && !state.ended && state.screen==='game'){
     drawCard();
   }
