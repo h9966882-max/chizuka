@@ -246,6 +246,30 @@
     padding:5px 18px; border-radius:999px;
   }
 
+  /* 結びつき */
+  .combo-banner{
+    display:flex; align-items:flex-start; gap:10px;
+    background:var(--paper-dim); border:1px solid var(--gold-soft);
+    border-radius:12px; padding:11px 14px; margin-bottom:12px;
+    font-size:0.82rem; color:var(--ink);
+  }
+  .combo-banner .cb-icon{font-size:1.4rem; flex-shrink:0; line-height:1.4;}
+  .combo-banner b{color:var(--navy); font-family:"Shippori Mincho B1",serif;}
+  .combo-banner .cb-desc{color:var(--ink-soft); display:block; margin-top:2px;}
+  .je-combo{
+    font-size:0.82rem; color:var(--ink-soft); padding-left:19px;
+    border-left:2px solid var(--gold-soft); margin:4px 0 0 5px; padding:2px 0 2px 14px;
+  }
+  .je-combo b{color:var(--navy); font-family:"Shippori Mincho B1",serif; font-style:normal;}
+  .combo-item{
+    display:flex; gap:10px; align-items:flex-start;
+    padding:9px 0; border-bottom:1px solid var(--paper-dim);
+  }
+  .combo-item:last-child{border-bottom:none;}
+  .combo-item .ci-icon{font-size:1.25rem; flex-shrink:0; width:26px; text-align:center;}
+  .combo-item b{color:var(--navy); font-family:"Shippori Mincho B1",serif;}
+  .combo-item p{margin:2px 0 0; font-size:0.82rem; color:var(--ink-soft);}
+
   /* hex map */
   .map-wrap{
     position:relative;
@@ -282,6 +306,16 @@
   .hub-ring{
     fill:none; stroke:#fffaf0; stroke-width:1.2; stroke-dasharray:2 2;
     opacity:0.9;
+  }
+  .combo-line{
+    stroke:var(--gold); stroke-width:1.4; stroke-dasharray:1 3; opacity:0.85;
+  }
+  .combo-dot{
+    fill:var(--paper); stroke:var(--gold); stroke-width:1;
+  }
+  .combo-icon{
+    font-size:10px; text-anchor:middle; dominant-baseline:central;
+    fill:var(--ink); font-family:"Shippori Mincho B1",serif;
   }
 
   /* card panel */
@@ -596,6 +630,33 @@ const DISCOVERIES = [
   { title:'重なっていた問い', value:'manabi', text:'別々に考えていたはずの問いが、実はひとつだったことに気づく。' },
 ];
 
+/* 隣接することで生まれる「結びつき」。同じカードどうしの組み合わせは存在しない。 */
+const COMBINATIONS = [
+  { a:'今日の一行', b:'続きのページ', name:'書き続ける人', icon:'📖', desc:'途切れていたはずの記録が、ひとつの物語としてつながっていく。' },
+  { a:'疲労', b:'お茶の時間', name:'休息', icon:'☕', desc:'立ち止まる時間こそが、また歩き出すための準備になる。' },
+  { a:'すれちがい', b:'届いていた言葉', name:'遅れて届く理解', icon:'💌', desc:'伝わらなかったはずの想いが、時間を超えて誰かの中に残っていた。' },
+  { a:'灯りをともす店', b:'久しぶりの誰か', name:'再会の灯り', icon:'🏮', desc:'ずっとそこにあった灯りが、思いがけない再会を導いていた。' },
+  { a:'うまくならない練習', b:'同じ問題を見直す', name:'練習帖', icon:'📝', desc:'うまくいかないことを、何度も見直す姿勢そのものが力になる。' },
+  { a:'沈黙', b:'静けさ', name:'深い静寂', icon:'🌙', desc:'ふたつの静けさが重なって、その場所はより深い静寂になる。' },
+  { a:'未完成', b:'重なっていた問い', name:'問いの続き', icon:'❔', desc:'終わらなかったことの中に、まだ考えるべき問いが残っていた。' },
+  { a:'対立', b:'整っていた場所', name:'落ち着いた先', icon:'🍃', desc:'ぶつかり合ったあとに、思いがけず整った場所が見つかる。' },
+  { a:'迷い', b:'地図を描き直す人', name:'新しい道筋', icon:'🧭', desc:'迷ったことで、これまでとは違う道が描けるようになる。' },
+  { a:'お茶の時間', b:'日記をつける', name:'ひとりの時間', icon:'🕯', desc:'誰にも見せない時間が、その日をそっと締めくくる。' },
+  { a:'言葉を集める人', b:'貼り紙を書く人', name:'言葉が残る場所', icon:'🗒', desc:'誰かの言葉が、別の誰かの言葉と並んで残っていく。' },
+  { a:'同じ本を読む人', b:'単語をひとつ覚える', name:'学びの輪', icon:'📚', desc:'別々に学んでいたはずのことが、いつのまにかつながっている。' },
+  { a:'眠る前のひとつ', b:'忘れもの', name:'思い出すきっかけ', icon:'🌃', desc:'眠る前に思い出したことが、忘れていた何かを連れてくる。' },
+  { a:'道具を譲る人', b:'長く通う常連', name:'受け継がれるもの', icon:'🔧', desc:'長く使われてきたものが、次の誰かの手に渡っていく。' },
+  { a:'水をやる時間', b:'窓を開ける', name:'整える朝', icon:'🌱', desc:'小さな手入れが重なって、その場所の空気が変わっていく。' },
+  { a:'名前を呼ぶ人', b:'同じ場所で待つ', name:'待ち合わせ', icon:'🌳', desc:'名前を呼ぶ声と、待っている人が、同じ場所で出会う。' },
+  { a:'予定の変更', b:'立ち止まる人', name:'思いがけない時間', icon:'⏳', desc:'予定が崩れたことで、ただ立ち止まる時間が生まれる。' },
+  { a:'言い過ぎた言葉', b:'見送る習慣', name:'次に会うときまで', icon:'🚪', desc:'言い過ぎてしまった日も、見送る言葉だけは変わらない。' },
+  { a:'誰かが置いた花', b:'同じ角度で座る', name:'変わらない景色', icon:'🌸', desc:'いつもの場所に、見慣れないものがひとつ増えている。' },
+  { a:'忘れていた約束', b:'手紙を抱えた人', name:'果たされる約束', icon:'✉️', desc:'出すかどうか迷っていた手紙が、思い出した約束への返事になる。' },
+];
+function findCombo(titleA, titleB){
+  return COMBINATIONS.find(c => (c.a===titleA && c.b===titleB) || (c.a===titleB && c.b===titleA));
+}
+
 const DIARY_PROMPTS = {
   encounter: 'この出会いから、何を感じた?',
   continuity: 'なぜ、これを続けている?',
@@ -655,6 +716,8 @@ function freshState(){
     showJournal:false,
     ended:false,
     ending:null,
+    combinations:[],
+    _lastCombo:null,
   };
 }
 
@@ -751,6 +814,7 @@ function renderMap(){
   const placeable = state.placementMode ? placeableHexes() : new Set();
   const newestKey = state._newestTileKey || null;
   const pendingKey = state.pendingPlacement ? `${state.pendingPlacement.q},${state.pendingPlacement.r}` : null;
+  const comboMarks = [];
 
   let svg = `<svg viewBox="${minX} ${minY} ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
   cells.forEach(({q,r})=>{
@@ -784,7 +848,18 @@ function renderMap(){
     if(tile && tile.hub){
       svg += `<circle class="hub-ring" cx="${x}" cy="${y}" r="${HEX_SIZE-6}"/>`;
     }
+    if(tile && tile.combo && tile.combo.withKey){
+      const [nq,nr] = tile.combo.withKey.split(',').map(Number);
+      const np = hexToPixel(nq,nr);
+      const mx=(x+np.x)/2, my=(y+np.y)/2;
+      comboMarks.push({x1:x,y1:y,x2:np.x,y2:np.y,mx,my});
+    }
     svg += `</g>`;
+  });
+  comboMarks.forEach(m=>{
+    svg += `<line class="combo-line" x1="${m.x1}" y1="${m.y1}" x2="${m.x2}" y2="${m.y2}"/>`;
+    svg += `<circle class="combo-dot" cx="${m.mx}" cy="${m.my}" r="8"/>`;
+    svg += `<text class="combo-icon" x="${m.mx}" y="${m.my+1}">結</text>`;
   });
   svg += `</svg>`;
   return svg;
@@ -850,13 +925,14 @@ function confirmPlacement(diaryText){
   const key=`${q},${r}`;
   let placedValue=null;
   const neighbors = neighborTiles(q,r);
+  const cardTitle = state.currentCard.data.title;
 
   if(state.placementMode==='value'){
     placedValue = state.pendingValue;
-    state.tiles[key] = { type:placedValue };
+    state.tiles[key] = { type:placedValue, cardTitle };
     checkContinuityGlow(placedValue);
   } else if(state.placementMode==='yuragi'){
-    state.tiles[key] = { type:'yuragi' };
+    state.tiles[key] = { type:'yuragi', cardTitle };
     state.fluctuationCount++;
     if(state.fluctuationCount % 2 === 0) state.bonusPending = true;
   }
@@ -870,6 +946,8 @@ function confirmPlacement(diaryText){
 function applyAdjacencyEffects(key, placedValue, neighbors){
   const p = activePlayer();
   if(!p.empathy) p.empathy = 0;
+  const newTile = state.tiles[key];
+  const [q,r] = key.split(',').map(Number);
 
   // 共鳴: 同じ価値観のタイルが隣にある → 共感+1
   if(placedValue && neighbors.some(t=>t.type===placedValue)){
@@ -880,7 +958,7 @@ function applyAdjacencyEffects(key, placedValue, neighbors){
   const distinctValues = new Set(neighbors.map(t=>t.type).filter(t=>VALUE_ORDER.includes(t)));
   if(distinctValues.size>=3){
     p.empathy++;
-    state.tiles[key].hub = true;
+    newTile.hub = true;
   }
 
   // 理想の未来が重視する価値観に隣接している → 納得度+1（追加）
@@ -892,9 +970,26 @@ function applyAdjacencyEffects(key, placedValue, neighbors){
   if(neighbors.some(t=>t.type==='yuragi')){
     state.bonusPending = true;
   }
+
+  // 結びつき: 隣接するカードどうしが特別な組み合わせになる
+  state._lastCombo = null;
+  getNeighbors(q,r).some(([nq,nr])=>{
+    const nKey = `${nq},${nr}`;
+    const nTile = state.tiles[nKey];
+    if(!nTile || !nTile.cardTitle || !newTile.cardTitle) return false;
+    const combo = findCombo(newTile.cardTitle, nTile.cardTitle);
+    if(combo){
+      newTile.combo = { ...combo, withKey:nKey };
+      state.combinations.push({ name:combo.name, icon:combo.icon, desc:combo.desc, turn:state.turn+1 });
+      state._lastCombo = combo;
+      return true;
+    }
+    return false;
+  });
 }
 
 function skipTurn(diaryText){
+  state._lastCombo = null;
   finishTurn(null, diaryText);
 }
 
@@ -930,6 +1025,7 @@ function finishTurn(placedValue, diaryText){
     text: cardText,
     value: placedValue,
     diary: (diaryText||'').trim(),
+    combo: state._lastCombo,
   });
 
   state.turn++;
@@ -1090,7 +1186,6 @@ function renderStart(){
     <p class="lead soft">まず「どんな未来を望むか」をひとつ選ぶ。そこから、カードが示す出来事に、ひとつずつ価値観を当てはめて地図を育てていく。理由を書き残せば、それがそのまま旅の記録になる。</p>
 
     ${resumeBlock}
-      <a class="back-link" href="cards.html" style="display:block;text-align:center;margin-top:14px;font-size:0.82rem;color:var(--ink-soft);text-decoration:underline;">カードずかんを見る</a>
   </div>
   `;
 }
@@ -1178,6 +1273,15 @@ function renderGame(){
 
   if(state.numPlayers>1){
     html += `<div class="current-player-flag"><span>${activePlayer().name} の番</span></div>`;
+  }
+
+  // 前のターンで結びつきが生まれた場合のお知らせ
+  if(state._lastCombo){
+    const c = state._lastCombo;
+    html += `<div class="combo-banner">
+      <span class="cb-icon">${c.icon}</span>
+      <div><b>《${c.name}》</b>が生まれた<span class="cb-desc">${c.desc}</span></div>
+    </div>`;
   }
 
   // マップ
@@ -1325,6 +1429,7 @@ function renderJournalEntries(player){
   return player.diary.slice().reverse().map(e=>{
     const dot = entryDot(e);
     let diaryHtml = e.diary ? `<p class="je-diary">${escapeHtml(e.diary)}</p>` : '';
+    let comboHtml = e.combo ? `<p class="je-combo">${e.combo.icon} <b>《${e.combo.name}》</b>が生まれた — ${e.combo.desc}</p>` : '';
     return `<div class="journal-entry">
       <div class="je-head">
         <span class="je-dot" style="background:${dot}"></span>
@@ -1333,6 +1438,7 @@ function renderJournalEntries(player){
       </div>
       <p class="je-text">${e.text}</p>
       ${diaryHtml}
+      ${comboHtml}
     </div>`;
   }).join('');
 }
@@ -1413,6 +1519,18 @@ function renderEnding(){
   convictionHtml += `<div class="stat-box"><div class="num">${tilesPlaced}</div><div class="lbl">置かれた価値</div></div>`;
   convictionHtml += `</div>`;
 
+  // 生まれた組み合わせ
+  let combosHtml = '';
+  if(state.combinations.length>0){
+    combosHtml = `<div class="divider"><span>生まれた組み合わせ</span></div>`;
+    combosHtml += state.combinations.map(c=>`
+      <div class="combo-item">
+        <div class="ci-icon">${c.icon}</div>
+        <div><b>《${c.name}》</b><p>${c.desc}</p></div>
+      </div>
+    `).join('');
+  }
+
   // 共有モード
   let shareSection='';
   if(!e.shareMode){
@@ -1446,6 +1564,7 @@ function renderEnding(){
 
     <div class="narrative-box">${narrative}</div>
     ${convictionHtml}
+    ${combosHtml}
 
     <div class="share-toggle">
       <span>日記を隠して、地図だけを見せる</span>
