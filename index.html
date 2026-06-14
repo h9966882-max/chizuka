@@ -537,6 +537,14 @@ const ENCOUNTERS = [
   { title:'同じ本を読む人', value:'manabi', text:'別々の場所で、同じ本を読んでいる人がいることを知る。' },
   { title:'立ち止まる人', value:'chowa', text:'忙しい通りの真ん中で、ひとりだけ立ち止まって空を見ている人がいる。' },
   { title:'道具を譲る人', value:'tsunagari', text:'使い込んだ道具を、まだ使える誰かに譲っている人がいる。' },
+  { title:'同じ席に座る人', value:'keizoku', text:'カフェへ行くたびに、いつも同じ席に座っている人がいる。' },
+  { title:'型を守る人', value:'keizoku', text:'決められた手順を、ひとつも飛ばさずにこなしている人を見かける。' },
+  { title:'長く通う常連', value:'keizoku', text:'何十年も、同じ店に通い続けている人がいると聞く。' },
+  { title:'歌う人', value:'hasshin', text:'誰に聞かせるためでもなく、小さく歌っている人がいる。' },
+  { title:'貼り紙を書く人', value:'hasshin', text:'掲示板に、誰かへ向けた短い貼り紙を書いている人がいる。' },
+  { title:'名前を呼ぶ人', value:'tsunagari', text:'通りすがりに、誰かの名前をうれしそうに呼ぶ声が聞こえた。' },
+  { title:'風を読む人', value:'chowa', text:'今日の風の向きだけで、明日の天気を当てる人がいる。' },
+  { title:'地図を描き直す人', value:'manabi', text:'古い地図に、新しい発見を書き足している人を見かける。' },
 ];
 
 const CONTINUITIES = [
@@ -552,6 +560,14 @@ const CONTINUITIES = [
   { title:'眠る前のひとつ', value:'tsunagari', text:'眠る前に、今日あったことをひとつだけ思い出す。' },
   { title:'針の音', value:'keizoku', text:'終わりが見えない作業を、また少しだけ進める。' },
   { title:'見送る習慣', value:'hasshin', text:'誰かを見送るとき、必ず同じ言葉をかける。' },
+  { title:'窓を開ける', value:'chowa', text:'朝、まず窓を開けて、外の空気を部屋に入れる。' },
+  { title:'同じ角度で座る', value:'chowa', text:'今日も、同じ角度で椅子に腰をおろす。' },
+  { title:'誰かの名前を書く', value:'tsunagari', text:'年賀状や手紙に、今年も同じ人の名前を書く。' },
+  { title:'同じ場所で待つ', value:'tsunagari', text:'誰かを待つとき、いつも同じ場所で待つ。' },
+  { title:'単語をひとつ覚える', value:'manabi', text:'今日も、知らなかった言葉をひとつだけ覚える。' },
+  { title:'同じ問題を見直す', value:'manabi', text:'うまく解けなかった問題を、もう一度開いて見直す。' },
+  { title:'日記をつける', value:'hasshin', text:'誰に見せるためでもないノートに、今日もひとこと書く。' },
+  { title:'同じ曲を流す', value:'hasshin', text:'作業をするとき、今日もいつもの曲を流す。' },
 ];
 
 const FLUCTUATIONS = [
@@ -563,6 +579,10 @@ const FLUCTUATIONS = [
   { title:'未完成', text:'やろうとしていたことが、中途半端なまま終わってしまった。' },
   { title:'迷い', text:'進むべき方向が、急にわからなくなった。' },
   { title:'変化', text:'当たり前だと思っていた風景が、いつのまにか変わっていた。' },
+  { title:'忘れもの', text:'持っていくつもりだったものを、家に忘れてきてしまった。' },
+  { title:'予定の変更', text:'楽しみにしていた予定が、急に変わってしまった。' },
+  { title:'言い過ぎた言葉', text:'つい、言い過ぎてしまった言葉が、頭から離れない。' },
+  { title:'静けさ', text:'いつも聞こえていた音が、今日はなぜか聞こえない。' },
 ];
 
 const DISCOVERIES = [
@@ -571,6 +591,9 @@ const DISCOVERIES = [
   { title:'消えていた答え', value:'manabi', text:'探していた答えが、探すのをやめたとたんに見つかる。' },
   { title:'続けてきた跡', value:'keizoku', text:'積み重ねてきたものが、思いがけない形になっていることに気づく。' },
   { title:'届いていた言葉', value:'hasshin', text:'昔伝えた言葉が、誰かの中にまだ残っていたことを知る。' },
+  { title:'忘れていた約束', value:'tsunagari', text:'ずっと前に交わした約束を、ふと思い出す。' },
+  { title:'整っていた場所', value:'chowa', text:'誰も手を入れていないはずの場所が、なぜか整っていた。' },
+  { title:'重なっていた問い', value:'manabi', text:'別々に考えていたはずの問いが、実はひとつだったことに気づく。' },
 ];
 
 const DIARY_PROMPTS = {
@@ -1484,3 +1507,4 @@ function resumeSavedGame(){
 init();
 </script>
 </body>
+</html>
