@@ -692,6 +692,16 @@ function findCombo(titleA, titleB){
   return COMBINATIONS.find(c => (c.a===titleA && c.b===titleB) || (c.a===titleB && c.b===titleA));
 }
 
+/* 交わりの場の表示ヘルパー */
+function valueNames(values){
+  return values.map(v=>VALUES[v].name).join('・');
+}
+function hubLabel(values){
+  if(values.length>=5) return 'すべての価値観が交わる場所';
+  if(values.length===4) return '4つの価値観が深く交わる場所';
+  return '3つの価値観が交わる場所';
+}
+
 const DIARY_PROMPTS = {
   encounter: 'この出会いから、何を感じた?',
   continuity: 'なぜ、これを続けている?',
@@ -764,7 +774,9 @@ function freshState(){
     ended:false,
     ending:null,
     combinations:[],
+    hubs:[],
     _lastCombo:null,
+    _lastHub:null,
     _archiveId:null,
     _libraryDeleteMode:false,
     _librarySelected:new Set(),
@@ -825,6 +837,7 @@ function archiveCurrentWorld(){
       name:p.name, future:p.future, conviction:p.conviction, empathy:p.empathy||0, diary:p.diary,
     })),
     combinations: state.combinations,
+    hubs: state.hubs,
     fluctuationCount: state.fluctuationCount,
     ending: state.ending,
   };
@@ -1049,10 +1062,15 @@ function applyAdjacencyEffects(key, placedValue, neighbors){
   }
 
   // 交わりの場: 隣接タイルに3種類以上の異なる価値観がある → 共感+1、印をつける
+  state._lastHub = null;
   const distinctValues = new Set(neighbors.map(t=>t.type).filter(t=>VALUE_ORDER.includes(t)));
   if(distinctValues.size>=3){
     p.empathy++;
+    const hubValues = VALUE_ORDER.filter(v=>distinctValues.has(v));
     newTile.hub = true;
+    newTile.hubValues = hubValues;
+    state._lastHub = hubValues;
+    state.hubs.push({ turn: state.turn+1, values: hubValues });
   }
 
   // 理想の未来が重視する価値観に隣接している → 納得度+1（追加）
@@ -1084,6 +1102,7 @@ function applyAdjacencyEffects(key, placedValue, neighbors){
 
 function skipTurn(diaryText){
   state._lastCombo = null;
+  state._lastHub = null;
   finishTurn(null, diaryText);
 }
 
@@ -1120,6 +1139,7 @@ function finishTurn(placedValue, diaryText){
     value: placedValue,
     diary: (diaryText||'').trim(),
     combo: state._lastCombo,
+    hub: state._lastHub,
   });
 
   state.turn++;
@@ -1211,6 +1231,7 @@ function beginGame(){
   }));
   state.tiles = { '0,0': { type:'start' } };
   state.combinations = [];
+  state.hubs = [];
   state.fluctuationCount = 0;
   state.bonusPending = false;
   state.turn = 0;
@@ -1451,6 +1472,14 @@ function renderGame(){
     </div>`;
   }
 
+  // 前のターンで交わりの場が生まれた場合のお知らせ
+  if(state._lastHub){
+    html += `<div class="combo-banner">
+      <span class="cb-icon">❖</span>
+      <div><b>${hubLabel(state._lastHub)}</b>が生まれた<span class="cb-desc">${valueNames(state._lastHub)}が、この場所で交わっている。</span></div>
+    </div>`;
+  }
+
   // マップ
   html += `<div class="map-wrap">${renderMap()}</div>`;
 
@@ -1597,6 +1626,7 @@ function renderJournalEntries(player){
     const dot = entryDot(e);
     let diaryHtml = e.diary ? `<p class="je-diary">${escapeHtml(e.diary)}</p>` : '';
     let comboHtml = e.combo ? `<p class="je-combo">${e.combo.icon} <b>《${e.combo.name}》</b>が生まれた — ${e.combo.desc}</p>` : '';
+    let hubHtml = e.hub ? `<p class="je-combo">❖ <b>${hubLabel(e.hub)}</b> — ${valueNames(e.hub)}が、ここで交わった。</p>` : '';
     return `<div class="journal-entry">
       <div class="je-head">
         <span class="je-dot" style="background:${dot}"></span>
@@ -1606,6 +1636,7 @@ function renderJournalEntries(player){
       <p class="je-text">${e.text}</p>
       ${diaryHtml}
       ${comboHtml}
+      ${hubHtml}
     </div>`;
   }).join('');
 }
@@ -1702,6 +1733,19 @@ function renderWorldBody(world, viewState, opts){
     `).join('');
   }
 
+  // 生まれた交わりの場
+  let hubsHtml = '';
+  const hubs = world.hubs || [];
+  if(hubs.length>0){
+    hubsHtml = `<div class="divider"><span>生まれた交わりの場</span></div>`;
+    hubsHtml += hubs.map(h=>`
+      <div class="combo-item">
+        <div class="ci-icon">❖</div>
+        <div><b>${hubLabel(h.values)}</b><p>${valueNames(h.values)}が、ひとつの場所で交わった。</p></div>
+      </div>
+    `).join('');
+  }
+
   // 共有モード
   let shareSection='';
   if(!viewState.shareMode){
@@ -1738,6 +1782,7 @@ function renderWorldBody(world, viewState, opts){
     <div class="narrative-box">${narrative}</div>
     ${convictionHtml}
     ${combosHtml}
+    ${hubsHtml}
 
     <div class="share-toggle">
       <span>日記を隠して、地図だけを見せる</span>
@@ -1749,7 +1794,7 @@ function renderWorldBody(world, viewState, opts){
 }
 
 function renderEnding(){
-  const world = { tiles:state.tiles, radius:state.radius, turn:state.turn, players:state.players, combinations:state.combinations, ending:state.ending };
+  const world = { tiles:state.tiles, radius:state.radius, turn:state.turn, players:state.players, combinations:state.combinations, hubs:state.hubs, ending:state.ending };
   const body = renderWorldBody(world, state.ending, {
     renameEditable:true, onRename:'renameWorld', onToggleShare:'toggleShare', onSetTab:'setEndingTab',
   });
@@ -1845,7 +1890,7 @@ function renderLibraryView(){
     </div>`;
   }
   if(!state._libraryViewState) state._libraryViewState = { shareMode:false, activePlayerTab:0 };
-  const world = { tiles:entry.tiles, radius:entry.radius, turn:entry.turn, players:entry.players, combinations:entry.combinations||[], ending:entry.ending };
+  const world = { tiles:entry.tiles, radius:entry.radius, turn:entry.turn, players:entry.players, combinations:entry.combinations||[], hubs:entry.hubs||[], ending:entry.ending };
   const body = renderWorldBody(world, state._libraryViewState, {
     renameEditable:true, onRename:'libRenameWorld', onToggleShare:'libToggleShare', onSetTab:'libSetEndingTab',
   });
@@ -1929,7 +1974,9 @@ function resumeSavedGame(){
   // 旧バージョンのセーブデータとの互換性を確保
   if(!state.radius) state.radius = 3;
   if(!state.combinations) state.combinations = [];
+  if(!state.hubs) state.hubs = [];
   if(state._lastCombo===undefined) state._lastCombo = null;
+  if(state._lastHub===undefined) state._lastHub = null;
   // _newestTileKeyは演出用なのでリセット
   state._newestTileKey = null;
   state._librarySelected = new Set();
